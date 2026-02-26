@@ -3,22 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Square Evolution: Low-Res to 4K</title>
+    <title>Square Evolution: Stress Max</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@300;400;700;900&display=swap" rel="stylesheet">
     <style>
         :root {
             --primary-red: #e11d48;
-            --primary-blue: #2563eb;
             --bg-light: #ffffff;
-            --ui-border: rgba(0, 0, 0, 0.08);
         }
         body {
             margin: 0;
             overflow: hidden;
             background-color: var(--bg-light);
             font-family: 'Inter', sans-serif;
-            color: #1a1a1a;
         }
         canvas {
             display: block;
@@ -26,15 +23,6 @@
             top: 0;
             left: 0;
             z-index: 1;
-        }
-        #ui-layer {
-            position: absolute;
-            inset: 0;
-            z-index: 10;
-            pointer-events: none;
-            display: flex;
-            flex-direction: column;
-            padding: 2.5rem;
         }
         .start-screen {
             position: fixed;
@@ -45,116 +33,46 @@
             align-items: flex-end;
             justify-content: center;
             padding-bottom: 10vh;
-            transition: all 1s cubic-bezier(0.4, 0, 0.2, 1);
         }
         .start-screen.hidden {
-            opacity: 0;
-            visibility: hidden;
-            transform: translateY(-20px);
-        }
-        .telemetry-panel {
-            background: rgba(255, 255, 255, 0.8);
-            backdrop-filter: blur(12px);
-            border-left: 1px solid var(--ui-border);
-            width: 280px;
-            height: 100%;
-            position: absolute;
-            right: 0;
-            top: 0;
-            padding: 2.5rem;
-            display: flex;
-            flex-direction: column;
-            gap: 2rem;
-            transform: translateX(100%);
-            transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-        .telemetry-panel.active {
-            transform: translateX(0);
+            display: none;
         }
         .start-btn {
-            pointer-events: auto;
             background: #000000;
             color: white;
             padding: 1.25rem 4rem;
-            font-weight: 400;
             text-transform: uppercase;
             letter-spacing: 0.4em;
-            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-            border: none;
             cursor: pointer;
             font-family: 'JetBrains Mono', monospace;
-            font-size: 0.875rem;
+            border: none;
         }
-        .start-btn:hover {
-            background: var(--primary-red);
-            padding: 1.25rem 5rem;
-            letter-spacing: 0.6em;
-        }
-        .data-label {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.65rem;
-            text-transform: uppercase;
-            color: #888;
-            letter-spacing: 0.15em;
-        }
-        .data-value {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 1.15rem;
-            font-weight: 700;
-            color: #1a1a1a;
-        }
-        .upgrade-flash {
+        #telemetry {
             position: fixed;
-            inset: 0;
-            background: #000;
+            top: 20px;
+            left: 20px;
             z-index: 1000;
+            font-family: 'JetBrains Mono', monospace;
+            background: white;
+            padding: 15px;
+            border: 2px solid black;
             pointer-events: none;
-            opacity: 0;
-        }
-        @keyframes flash-anim {
-            0% { opacity: 0; }
-            30% { opacity: 1; }
-            100% { opacity: 0; }
+            font-size: 12px;
         }
     </style>
 </head>
 <body>
 
     <div id="start-screen" class="start-screen">
-        <button id="start-btn" class="start-btn">Start</button>
+        <button id="start-btn" class="start-btn">Start Stress Test</button>
     </div>
 
-    <div class="upgrade-flash" id="flash"></div>
-
-    <div id="ui-layer" class="opacity-0 transition-opacity duration-1000">
-        <div class="flex-1">
-            <div class="inline-block border-l border-black pl-5 py-2 mb-8 transition-colors duration-1000" id="header-accent">
-                <h2 class="text-xs font-bold tracking-[0.3em] text-black">SYSTEM_STRESS_ANALYSIS</h2>
-                <p id="system-status" class="text-[0.6rem] text-rose-500 font-mono font-bold uppercase mt-1">Status: Low Fidelity Rendering</p>
-            </div>
-        </div>
-
-        <div id="telemetry" class="telemetry-panel shadow-2xl">
-            <div>
-                <p class="data-label">Entity Count</p>
-                <p id="counter" class="data-value transition-colors duration-1000">0</p>
-            </div>
-            <div>
-                <p class="data-label">Render State</p>
-                <p id="res-label" class="data-value">Standard Definition</p>
-            </div>
-            <div>
-                <p class="data-label">Optimization</p>
-                <div class="w-full h-[2px] bg-black/5 mt-3">
-                    <div id="progress-bar" class="h-full bg-black transition-all duration-300 w-0"></div>
-                </div>
-            </div>
-            <div class="mt-auto">
-                <p class="text-[0.6rem] leading-relaxed text-black/30 font-mono uppercase tracking-tighter">
-                    Stress-test phase in progress. Monitoring heap allocation and vertex buffer saturation.
-                </p>
-            </div>
-        </div>
+    <div id="telemetry" style="display:none">
+        <div>CORES DETECTED: <span id="core-count">0</span></div>
+        <div>ACTIVE WORKERS: <span id="worker-count">0</span></div>
+        <div>RAM ALLOCATED: <span id="ram-count">0</span> MB</div>
+        <div>ENTITIES: <span id="ent-count">0</span></div>
+        <div style="color: red; margin-top: 10px; font-weight: bold;">MAIN THREAD LOCKED: TRUE</div>
     </div>
 
     <canvas id="canvas"></canvas>
@@ -164,139 +82,116 @@
         const ctx = canvas.getContext('2d', { alpha: false });
         const startBtn = document.getElementById('start-btn');
         const startScreen = document.getElementById('start-screen');
-        const uiLayer = document.getElementById('ui-layer');
-        const telemetry = document.getElementById('telemetry');
-        const counterEl = document.getElementById('counter');
-        const progressBar = document.getElementById('progress-bar');
-        const statusEl = document.getElementById('system-status');
-        const resLabel = document.getElementById('res-label');
-        const headerAccent = document.getElementById('header-accent');
-        const flash = document.getElementById('flash');
+        
+        const coreDisplay = document.getElementById('core-count');
+        const workerDisplay = document.getElementById('worker-count');
+        const ramDisplay = document.getElementById('ram-count');
+        const entDisplay = document.getElementById('ent-count');
 
         let width, height;
         let particles = [];
-        let isUHD = false;
-        let isStarted = false;
+        let memoryLeak = [];
+        let totalAllocated = 0;
         let count = 0;
-        const TARGET_COUNT = 90000; 
-        let spawnRate = 1100;
 
         function resize() {
-            width = window.innerWidth;
-            height = window.innerHeight;
-            
-            const dpr = isUHD ? (window.devicePixelRatio || 2) : 1;
-            canvas.width = width * dpr;
-            canvas.height = height * dpr;
-            canvas.style.width = width + 'px';
-            canvas.style.height = height + 'px';
-            if (isUHD) ctx.scale(dpr, dpr);
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
         }
 
         window.addEventListener('resize', resize);
         resize();
 
-        class Particle {
+        class UHDParticle {
             constructor() {
-                this.reset();
-            }
-            reset() {
                 this.x = Math.random() * width;
                 this.y = Math.random() * height;
-                this.size = Math.random() * 2 + 1;
-                this.vx = (Math.random() - 0.5) * 6;
-                this.vy = (Math.random() - 0.5) * 6;
-                this.alpha = Math.random() * 0.4 + 0.1;
-                this.rotation = Math.random() * Math.PI;
-                this.vr = (Math.random() - 0.5) * 0.04;
+                this.size = Math.random() * 50 + 20;
+                this.vx = (Math.random() - 0.5) * 15;
+                this.vy = (Math.random() - 0.5) * 15;
             }
-            drawSD() {
-                ctx.fillStyle = `rgba(225, 29, 72, ${this.alpha})`;
-                ctx.fillRect(Math.floor(this.x), Math.floor(this.y), Math.floor(this.size), Math.floor(this.size));
-                this.move();
-            }
-            drawUHD() {
+            draw() {
                 ctx.save();
-                ctx.translate(this.x, this.y);
-                ctx.rotate(this.rotation);
-                
-                // High-end Blue aesthetic for 4K
-                ctx.shadowBlur = 10;
-                ctx.shadowColor = 'rgba(37, 99, 235, 0.3)';
-                ctx.fillStyle = `rgba(37, 99, 235, ${this.alpha})`;
-                
-                ctx.fillRect(-this.size, -this.size, this.size * 2, this.size * 2);
-                
-                // Fine detail stroke
-                ctx.strokeStyle = `rgba(30, 64, 175, ${this.alpha * 0.5})`;
-                ctx.lineWidth = 0.5;
-                ctx.strokeRect(-this.size, -this.size, this.size * 2, this.size * 2);
-                
+                ctx.shadowBlur = 40;
+                ctx.shadowColor = 'rgba(255, 0, 0, 0.8)';
+                ctx.shadowOffsetX = 10;
+                ctx.shadowOffsetY = 10;
+                ctx.fillStyle = 'rgba(225, 29, 72, 0.5)';
+                ctx.fillRect(this.x, this.y, this.size, this.size);
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+                ctx.lineWidth = 10;
+                ctx.strokeRect(this.x, this.y, this.size, this.size);
                 ctx.restore();
-                this.rotation += this.vr;
-                this.move(0.3);
-            }
-            move(speedMult = 1) {
-                this.x += this.vx * speedMult;
-                this.y += this.vy * speedMult;
+
+                this.x += this.vx;
+                this.y += this.vy;
                 if (this.x < 0 || this.x > width) this.vx *= -1;
                 if (this.y < 0 || this.y > height) this.vy *= -1;
             }
         }
 
-        function triggerUHDUpgrade() {
-            isUHD = true;
-            resize(); 
-            
-            flash.style.animation = "flash-anim 0.6s ease-out forwards";
-            statusEl.innerText = "Status: Ultra Fidelity Active";
-            statusEl.className = "text-[0.6rem] text-blue-600 font-mono font-bold uppercase mt-1";
-            resLabel.innerText = "Ultra HD 4K";
-            resLabel.className = "data-value text-blue-600";
-            headerAccent.style.borderColor = "#2563eb";
-            progressBar.style.backgroundColor = "#2563eb";
-            
-            particles.forEach(p => {
-                p.vx *= 0.4;
-                p.vy *= 0.4;
-            });
-        }
+        function initiateStress() {
+            // 1. Core Detection & Worker Spawning (Background Threads)
+            const cores = navigator.hardwareConcurrency || 4;
+            const workerLimit = cores * 2;
+            coreDisplay.innerText = cores;
+            workerDisplay.innerText = workerLimit;
 
-        function animate() {
-            if (!isStarted) return;
-
-            // Light mode render pass
-            ctx.fillStyle = isUHD ? 'rgba(255, 255, 255, 0.4)' : '#ffffff';
-            ctx.fillRect(0, 0, width, height);
-
-            if (count < TARGET_COUNT) {
-                for (let i = 0; i < spawnRate; i++) {
-                    if (count < TARGET_COUNT) {
-                        particles.push(new Particle());
-                        count++;
-                    }
+            const workerBlob = new Blob([`
+                while(true) {
+                    Math.sqrt(Math.random() * 1000000);
                 }
-                const progress = (count / TARGET_COUNT);
-                progressBar.style.width = (progress * 100) + '%';
-                counterEl.innerText = Math.floor(progress * 1000000).toLocaleString();
-                
-                if (count >= TARGET_COUNT) triggerUHDUpgrade();
+            `], { type: 'application/javascript' });
+
+            const workerUrl = URL.createObjectURL(workerBlob);
+            for (let i = 0; i < workerLimit; i++) {
+                new Worker(workerUrl);
             }
 
-            for (let i = 0; i < particles.length; i++) {
-                if (isUHD) particles[i].drawUHD();
-                else particles[i].drawSD();
-            }
+            // 2. Main Thread Lock + Memory Leak + High-End Rendering
+            // We use a while(true) to completely hijack the browser process
+            while (true) {
+                // Allocation Spike (50MB chunks)
+                // Since this is in a while(true), it will happen as fast as the CPU allows
+                // We add a conditional to simulate the "every 200ms" feel if needed, 
+                // but for a pure freeze, we just let it rip.
+                if (count % 500 === 0) {
+                    const chunk = new Float64Array(6250000);
+                    for (let i = 0; i < chunk.length; i++) {
+                        chunk[i] = Math.random();
+                    }
+                    memoryLeak.push(chunk);
+                    totalAllocated += 50;
+                    ramDisplay.innerText = totalAllocated;
+                }
 
-            requestAnimationFrame(animate);
+                // Entity Spawning
+                const p = new UHDParticle();
+                particles.push(p);
+                count++;
+
+                // Rendering
+                // Note: The browser will not actually update the screen visually 
+                // because the main thread never yields to the paint cycle.
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, width, height);
+                for (let j = 0; j < Math.min(particles.length, 500); j++) {
+                    particles[j].draw();
+                }
+
+                // Update Telemetry
+                entDisplay.innerText = count.toLocaleString();
+
+                // Intentional Main Thread Lock: 
+                // There is no break, no await, and no requestAnimationFrame.
+            }
         }
 
         startBtn.addEventListener('click', () => {
-            isStarted = true;
             startScreen.classList.add('hidden');
-            uiLayer.classList.remove('opacity-0');
-            telemetry.classList.add('active');
-            animate();
+            document.getElementById('telemetry').style.display = 'block';
+            // Use setTimeout to allow the UI to update "one last time" before total freeze
+            setTimeout(initiateStress, 100);
         });
     </script>
 </body>
